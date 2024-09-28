@@ -1,4 +1,4 @@
-//BoroFarm v0.16  Ilya Borodin(c)
+//BoroFarm v0.2 alpha  Ilya Borodin(c)
 //0.001  - сбор данных с датчиков
 //0.01 - добавлен вывод данных на экран
 //0.02 - фиксы
@@ -8,8 +8,11 @@
 //0.13 - оптимизация кода
 //0.14 - загрузочный экран
 //0.15 - переход c delay() на millis для оптимального управления системой
-//0.16 - управление подсветкой lcd экрана 
+//0.16 - управление подсветкой lcd экрана с кнопки 
+//0.17 - подключена звуковая индикация
+//0.17.1 - анимация заставки со звуком
 //0.20 - алгоритм мониторинга для полива
+//0.21 - подключение матрицы кнопок 
 
 #include <DHT.h>
 #include <Servo.h>
@@ -18,10 +21,11 @@
 
 
 // пины
-const int lightIndicatorPin = 0;  //A0 фоторезистор
-const int soilMoisturePin = 1;    //A1 датчик влажности почвы
-#define DHTPIN 2                  //D2 Датчик DHT11
-#define DHTTYPE DHT11             //   Используемый тип датчика DHT11
+const int lightIndicatorPin = 0;  //A0  фоторезистор
+const int soilMoisturePin = 1;    //A1  датчик влажности почвы
+#define DHTPIN 2                  //D2  Датчик DHT11
+const int speaker = 3;            //D3  Пищалка
+#define DHTTYPE DHT11             //    Используемый тип датчика DHT11
 const int pumpPin = 47;           //D47 насос  (реле 1)
 const int fanPin = 48;            //D48 вентилятор  (реле 2)
 const int lightPin = 49;          //D49 лампы  (реле 3)
@@ -51,6 +55,13 @@ int ventilationDelay = 86400;   //задержка проветривания (�
 int lcdLightDuration = 10; //длительность подсветки lcd экрана после нажатия кнопки (сек)
 
 
+// trasholds 
+int soilMoisturePercentMin = 40; //минимальный процент влажности почвы
+int illuminationPercentMin = 50; //минимальный процент освещенности
+int humidityPercentMax = 95; //максимальный процент влажности воздуха
+int temperatureMax = 29; //максимальная температура
+
+
 // служебные переменные
 bool needWatering;  //необходимость полива
 bool watering;      //полив
@@ -59,13 +70,14 @@ bool needVentilation;  //необходимость проветривания
 bool ventilation;      //проветривание
 bool lcdLight;         //подсветка экрана 
 
-unsigned long sensorsTimer; // таймер для датчиков
-unsigned long lightTimer;   // таймер для подсветки экрана
-
 int illuminationPercentOld;  //старые значения датчиков
 int soilMoisturePercentOld;
 float humidityPercentOld;
 float temperatureOld;
+
+//таймеры
+unsigned long sensorsTimer; // таймер для датчиков
+unsigned long lightTimer;   // таймер для подсветки экрана
 
 DHT dht(DHTPIN, DHTTYPE);
 Servo myservo;
@@ -75,17 +87,39 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
   Serial.begin(9600);
-
   dht.begin();
   lcd.init();
-  lcd.backlight();
+  pinMode(speaker, OUTPUT);
+  pinMode(fanPin, OUTPUT);
+  pinMode(pumpPin, OUTPUT);
+  pinMode(lightPin, OUTPUT);
+  pinMode(button, INPUT);
+  digitalWrite(fanPin, HIGH);
+  digitalWrite(pumpPin, HIGH);
+  digitalWrite(lightPin, HIGH);
 
+  
+  lcd.backlight();
   lcd.setCursor(0, 0);
-  lcd.print("BoroFarm v0.16");
-  delay(2000);
+  lcd.print("Boro");
+  tone(speaker, 261); 
+  delay(100);
+  lcd.print("Farm ");
+  tone(speaker, 329); 
+  delay(100);
+  lcd.print("v0.17.1");
+  tone(speaker, 392); 
+  delay(100);
+  tone(speaker, 523); 
+  delay(100);
+  noTone(speaker);
+  delay(1200);
   lcd.setCursor(0, 1);
   lcd.print("Ilya Borodin (c)");
-  delay(5000);
+  tone(speaker, 1046); 
+  delay(200);
+  noTone(speaker);
+  delay(3000);
   lcd.noBacklight();
   lcd.setCursor(0, 0);
   lcd.print("                ");
@@ -93,17 +127,13 @@ void setup() {
   lcd.print("                ");
 
 
-  pinMode(fanPin, OUTPUT);
-  pinMode(pumpPin, OUTPUT);
-  pinMode(lightPin, OUTPUT);
-  pinMode(button, INPUT);
-
-  // выключаем все реле
+  // выключаем все реле (мало ли)
   digitalWrite(fanPin, HIGH);
   digitalWrite(pumpPin, HIGH);
   digitalWrite(lightPin, HIGH);
 
   sensorsTimer = millis();
+  lightTimer = millis();
 }
 
 //======================================================
