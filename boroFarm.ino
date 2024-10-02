@@ -1,4 +1,4 @@
-//BoroFarm v0.2 alpha  Ilya Borodin(c)
+//BoroFarm v0.18 alpha  Ilya Borodin(c)
 //0.001  - сбор данных с датчиков
 //0.01 - добавлен вывод данных на экран
 //0.02 - фиксы
@@ -11,14 +11,13 @@
 //0.16 - управление подсветкой lcd экрана с кнопки 
 //0.17 - подключена звуковая индикация
 //0.17.1 - анимация заставки со звуком
-//0.20 - алгоритм мониторинга для полива
-//0.21 - подключение матрицы кнопок 
+//0.18 - подключение матрицы кнопок
+//0.21 - алгоритм мониторинга для полива
 
 #include <DHT.h>
 #include <Servo.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-
 
 // пины
 const int lightIndicatorPin = 0;  //A0  фоторезистор
@@ -32,7 +31,6 @@ const int lightPin = 49;          //D49 лампы  (реле 3)
 #define _LCD_TYPE 1               //D20-D21   для работы с I2C дисплеями
 const int button = 22;            //D22 кнопка для управления экраном
 
-
 // значения с датчиков
 int lightIndicatorValue;  // значение с фоторезистора
 int illuminationPercent;  // процент освещенности
@@ -41,19 +39,14 @@ int soilMoisturePercent;  // процент влажности почвы
 float humidityPercent;    // влажность воздуха
 float temperature;        // температура воздуха
 
-
 // config
 bool debugMode = false;  //debug mode - true выводит данные с всех датчиков и переменные в порт в читаемом виде
 int cycleTime = 1;       //время цикла в секундах
-
 int wateringDuration = 8;   //длительность полива (сек)
 int wateringDelay = 36000;  //задержка полива (сек)   *если полив нужен, но не прошло необходимое время - полив не будет осуществлён  (1 час - 3600 сек, сутки - 86400 сек)
-
 int ventilationDuration = 600;  //длительность проветривания (сек)
 int ventilationDelay = 86400;   //задержка проветривания (сек)   *если проветривание нужно, но не прошло необходимое время - проветривание не будет осуществлёно ()
-
 int lcdLightDuration = 10; //длительность подсветки lcd экрана после нажатия кнопки (сек)
-
 
 // trasholds 
 int soilMoisturePercentMin = 40; //минимальный процент влажности почвы
@@ -61,15 +54,12 @@ int illuminationPercentMin = 50; //минимальный процент осв�
 int humidityPercentMax = 95; //максимальный процент влажности воздуха
 int temperatureMax = 29; //максимальная температура
 
-
 // служебные переменные
 bool needWatering;  //необходимость полива
 bool watering;      //полив
-
 bool needVentilation;  //необходимость проветривания
 bool ventilation;      //проветривание
 bool lcdLight;         //подсветка экрана 
-
 int illuminationPercentOld;  //старые значения датчиков
 int soilMoisturePercentOld;
 float humidityPercentOld;
@@ -90,6 +80,8 @@ void setup() {
   dht.begin();
   lcd.init();
   pinMode(speaker, OUTPUT);
+
+  pinMode(speaker, OUTPUT);
   pinMode(fanPin, OUTPUT);
   pinMode(pumpPin, OUTPUT);
   pinMode(lightPin, OUTPUT);
@@ -97,7 +89,6 @@ void setup() {
   digitalWrite(fanPin, HIGH);
   digitalWrite(pumpPin, HIGH);
   digitalWrite(lightPin, HIGH);
-
   
   lcd.backlight();
   lcd.setCursor(0, 0);
@@ -125,7 +116,6 @@ void setup() {
   lcd.print("                ");
   lcd.setCursor(0, 1);
   lcd.print("                ");
-
 
   // выключаем все реле (мало ли)
   digitalWrite(fanPin, HIGH);
@@ -156,7 +146,6 @@ void loop() {
       lcd.print(illuminationPercent);
       lcd.print("%");
     }
-
     //датчик влажночсти почвы
     soilMoistureValue = analogRead(soilMoisturePin);
     soilMoisturePercent = (-soilMoistureValue + 480) * 100 / 300;  // 462 - показание датчика на воздухе / 260 - политая земля /
@@ -170,7 +159,6 @@ void loop() {
       lcd.print(soilMoisturePercent);
       lcd.print("%");
     }
-
     //влажность воздуха
     humidityPercent = dht.readHumidity();
     if (humidityPercentOld != humidityPercent) {
@@ -182,7 +170,6 @@ void loop() {
       lcd.print(round(humidityPercent));
       lcd.print("%");
     }
-
     //температура
     temperature = dht.readTemperature();
     if (temperatureOld != temperature) {
@@ -204,10 +191,8 @@ void loop() {
       Serial.print(", ");
       Serial.println(temperature);
     }  
-
     sensorsTimer = millis();
   }
-
 
   // подсветка экрана 
   if (digitalRead(button) == 1){
@@ -215,7 +200,6 @@ void loop() {
     lcd.backlight();
     lightTimer = millis();
   };
-
   if (lcdLight && millis() - lightTimer >= lcdLightDuration * 1000) {
     lcd.noBacklight();
     lcdLight = false;
